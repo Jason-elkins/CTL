@@ -1,0 +1,75 @@
+# The runner VM is expected to already have dependencies installed.
+# see https://docs.gitlab.com/ce/ci/yaml/README.html for all available options
+
+
+#### SETUP ####
+stages:
+  - build
+  - test
+  - trigger_downstream
+
+.run_build: &run_build
+  stage: build
+  script:
+    - echo "Building"
+    - "mkdir build && cd build"
+    - "cmake ..  -DCMAKE_INSTALL_PREFIX=/opt/cinecert"
+    - make
+    - sudo make install
+    - sudo ldconfig
+
+.run_tests: &run_tests
+  stage: test
+  script:
+    - echo "Not running CTL Unittests."
+
+
+
+#### BUILD ####
+Ubuntu_16.04.6:
+  tags: ["Ubuntu_16.04.6"]
+  <<: *run_build
+
+.Ubuntu_20.04: # Python 3 not yet supported.
+  tags: ["Ubuntu_20.04", "Python_3.8"]
+  <<: *run_build
+ 
+Centos_7.2.1511:
+  tags: ["Centos_7.2.1511"]
+  variables:
+    GIT_STRATEGY: clone
+  <<: *run_build
+
+
+
+#### TEST ####
+Ubuntu_16_tests:
+  tags: ["Ubuntu_16.04.6"]
+  variables:
+    GIT_STRATEGY: none
+  <<: *run_tests
+
+.Ubuntu_20_tests: # Python 3 not yet supported.
+  tags: ["Ubuntu_20.04", "Python_3.8"]
+  variables:
+    GIT_STRATEGY: none
+  <<: *run_tests
+
+Centos_7_tests:
+  tags: ["Centos_7.2.1511"]
+  variables:
+    GIT_STRATEGY: none
+  <<: *run_tests
+
+
+
+#### TRIGGER ####
+trigger_downstream:
+  stage: trigger_downstream
+  trigger:
+    project: cc_projects/Kii
+    branch: Continuous_Integration
+
+#
+#
+#
